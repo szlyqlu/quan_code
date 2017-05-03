@@ -128,3 +128,72 @@ Information: You may need to update /etc/fstab.
 [root@localhost ~]# vgdisplay -C
   VG     #PV #LV #SN Attr   VSize  VFree 
   fedora   1   3   0 wz--n- 44.00g 27.80g
+  
+  [root@localhost ~]# parted /dev/sda
+GNU Parted 2.1
+Using /dev/sda
+Welcome to GNU Parted! Type 'help' to view a list of commands.
+(parted) unit s print                                                     
+Model: VMware, VMware Virtual S (scsi)
+Disk /dev/sda: 52428800s
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+
+Number  Start     End        Size       Type     File system  Flags
+ 1      2048s     1026047s   1024000s   primary  ext4         boot
+ 2      1026048s  41943039s  40916992s  primary               lvm
+
+(parted) rm 2                                                             
+Warning: WARNING: the kernel failed to re-read the partition table on /dev/sda (Device or
+resource busy).  As a result, it may not reflect all of your changes until after reboot.
+(parted) unit s print
+Model: VMware, VMware Virtual S (scsi)
+Disk /dev/sda: 52428800s
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+
+Number  Start  End       Size      Type     File system  Flags
+ 1      2048s  1026047s  1024000s  primary  ext4         boot
+
+(parted) mkpart
+Partition type?  primary/extended? primary                                
+File system type?  [ext2]?                                                
+Start? 1026048s                                                           
+End? 52428799s                                                            
+Warning: WARNING: the kernel failed to re-read the partition table on /dev/sda (Device or
+resource busy).  As a result, it may not reflect all of your changes until after reboot.
+(parted) unit s print                                                     
+Model: VMware, VMware Virtual S (scsi)
+Disk /dev/sda: 52428800s
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+
+Number  Start     End        Size       Type     File system  Flags
+ 1      2048s     1026047s   1024000s   primary  ext4         boot
+ 2      1026048s  52428799s  51402752s  primary
+
+(parted) set 2 lvm on                                                     
+Warning: WARNING: the kernel failed to re-read the partition table on /dev/sda (Device or
+resource busy).  As a result, it may not reflect all of your changes until after reboot.
+(parted) unit s print                                                     
+Model: VMware, VMware Virtual S (scsi)
+Disk /dev/sda: 52428800s
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+
+Number  Start     End        Size       Type     File system  Flags
+ 1      2048s     1026047s   1024000s   primary  ext4         boot
+ 2      1026048s  52428799s  51402752s  primary               lvm
+
+(parted) quit                                                             
+Information: You may need to update /etc/fstab.                           
+
+[root@localhost ~]# pvresize /dev/sda2
+  Physical volume "/dev/sda2" changed
+  1 physical volume(s) resized / 0 physical volume(s) not resized
+[root@localhost ~]# vgdiplay -C
+-bash: vgdiplay: command not found
+[root@localhost ~]# vgdisplay -C
+  VG             #PV #LV #SN Attr   VSize  VFree
+  vg_centostes01   1   2   0 wz--n- 19.51g    0 
+

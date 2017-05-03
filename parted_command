@@ -129,6 +129,11 @@ Information: You may need to update /etc/fstab.
   VG     #PV #LV #SN Attr   VSize  VFree 
   fedora   1   3   0 wz--n- 44.00g 27.80g
   
+  
+  在centos6下，因为parted的版本只有2.1,没有resizepart的方法，所以必须采用删除旧分区和新建新分区的方法
+  
+  
+  
   [root@localhost ~]# parted /dev/sda
 GNU Parted 2.1
 Using /dev/sda

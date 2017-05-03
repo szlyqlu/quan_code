@@ -131,7 +131,7 @@ Information: You may need to update /etc/fstab.
   
   
   在centos6下，因为parted的版本只有2.1,没有resizepart的方法，所以必须采用删除旧分区和新建新分区的方法
-  
+  同时必须重启后才能生效
   
   
   [root@localhost ~]# parted /dev/sda

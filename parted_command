@@ -202,3 +202,137 @@ Information: You may need to update /etc/fstab.
   VG             #PV #LV #SN Attr   VSize  VFree
   vg_centostes01   1   2   0 wz--n- 19.51g    0 
 
+fdisk branch
+[root@localhost ~]# fdisk -ul /dev/sda
+
+Disk /dev/sda: 37.6 GB, 37580963840 bytes
+255 heads, 63 sectors/track, 4568 cylinders, total 73400320 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 0x000d1d34
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sda1   *        2048     1026047      512000   83  Linux
+Partition 1 does not end on cylinder boundary.
+/dev/sda2         1026048    62914559    30944256   8e  Linux LVM
+[root@localhost ~]# fdisk /dev/sda
+
+WARNING: DOS-compatible mode is deprecated. It's strongly recommended to
+         switch off the mode (command 'c') and change display units to
+         sectors (command 'u').
+
+Command (m for help): p
+
+Disk /dev/sda: 37.6 GB, 37580963840 bytes
+255 heads, 63 sectors/track, 4568 cylinders
+Units = cylinders of 16065 * 512 = 8225280 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 0x000d1d34
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sda1   *           1          64      512000   83  Linux
+Partition 1 does not end on cylinder boundary.
+/dev/sda2              64        3917    30944256   8e  Linux LVM
+
+Command (m for help): d
+Partition number (1-4): 2
+
+Command (m for help): m
+Command action
+   a   toggle a bootable flag
+   b   edit bsd disklabel
+   c   toggle the dos compatibility flag
+   d   delete a partition
+   l   list known partition types
+   m   print this menu
+   n   add a new partition
+   o   create a new empty DOS partition table
+   p   print the partition table
+   q   quit without saving changes
+   s   create a new empty Sun disklabel
+   t   change a partition's system id
+   u   change display/entry units
+   v   verify the partition table
+   w   write table to disk and exit
+   x   extra functionality (experts only)
+
+Command (m for help): u
+Changing display/entry units to sectors
+
+Command (m for help): p
+
+Disk /dev/sda: 37.6 GB, 37580963840 bytes
+255 heads, 63 sectors/track, 4568 cylinders, total 73400320 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 0x000d1d34
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sda1   *        2048     1026047      512000   83  Linux
+Partition 1 does not end on cylinder boundary.
+
+Command (m for help): n
+Command action
+   e   extended
+   p   primary partition (1-4)
+p
+Partition number (1-4): 2
+First sector (63-73400319, default 63): 1026048
+Last sector, +sectors or +size{K,M,G} (1026048-73400319, default 73400319): 
+Using default value 73400319
+
+Command (m for help): p
+
+Disk /dev/sda: 37.6 GB, 37580963840 bytes
+255 heads, 63 sectors/track, 4568 cylinders, total 73400320 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 0x000d1d34
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sda1   *        2048     1026047      512000   83  Linux
+Partition 1 does not end on cylinder boundary.
+/dev/sda2         1026048    73400319    36187136   83  Linux
+
+Command (m for help): t
+Partition number (1-4): 2
+Hex code (type L to list codes): 8e
+Changed system type of partition 2 to 8e (Linux LVM)
+
+Command (m for help): w
+The partition table has been altered!
+
+Calling ioctl() to re-read partition table.
+
+WARNING: Re-reading the partition table failed with error 16: Device or resource busy.
+The kernel still uses the old table. The new table will be used at
+the next reboot or after you run partprobe(8) or kpartx(8)
+Syncing disks.
+[root@localhost ~]# fdisk -ul /dev/sda
+
+Disk /dev/sda: 37.6 GB, 37580963840 bytes
+255 heads, 63 sectors/track, 4568 cylinders, total 73400320 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 0x000d1d34
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sda1   *        2048     1026047      512000   83  Linux
+Partition 1 does not end on cylinder boundary.
+/dev/sda2         1026048    73400319    36187136   8e  Linux LVM
+[root@localhost ~]# partprobe /dev/sda
+Warning: WARNING: the kernel failed to re-read the partition table on /dev/sda (Device or resource busy).  As a result, it may not reflect all of your changes until after reboot.
+[root@localhost ~]# pvresize /dev/sda2
+  Physical volume "/dev/sda2" changed
+  1 physical volume(s) resized / 0 physical volume(s) not resized
+[root@localhost ~]# pvscan
+  PV /dev/sdb1   VG othervg01        lvm2 [14.00 GiB / 12.00 GiB free]
+  PV /dev/sda2   VG vg_centostes01   lvm2 [29.51 GiB / 10.00 GiB free]
+  Total: 2 [43.50 GiB] / in use: 2 [43.50 GiB] / in no VG: 0 [0   ]
+[root@localhost ~]# exit
+

@@ -512,15 +512,4 @@ while 1:
 
 serverlist = serverlist.split(" ")
 
-
-# book=xlrd.open_workbook("DCCservers.xls")
-# sh=book.sheet_by_index(2)
-# DCC_servers = sh.col_values(0)
-#
-#
-# for server in a:
-#     if server not in DCC_servers:
-#         a.remove(server)
-
-
 window = window(serverlist);

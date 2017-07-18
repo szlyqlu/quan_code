@@ -13,6 +13,7 @@ def show_message(message,title):
     message_dialog.set_markup(message);
     message_dialog.set_title(title)
     message_dialog.run();
+    message_dialog.destroy()
 
 #开启脚本用dialog
 def begin_response(dialog,response_id):
@@ -118,6 +119,7 @@ class window:
 
     def destroy(self, widget, data=None):
         print "destroy"
+	self.save_log()
         gtk.main_quit()
 
     def delete_event(self, widget, event, data=None):
@@ -215,10 +217,10 @@ class window:
                         "information":""
                     }
                 vTerminal.fork_command()
-                if defcmd == 'Y' or defcmd == 'y' or defcmd == 'yes':
-                    pass
-	        else:
-		    vTerminal.feed_child("ssh " + loginid +"@" + server + "\n")
+#                if defcmd == 'Y' or defcmd == 'y' or defcmd == 'yes':
+#                    pass
+#	        else:
+#		    vTerminal.feed_child("ssh " + loginid +"@" + server + "\n")
 	        #change color
 	        fgcolor = gtk.gdk.color_parse('#000000')
                 bgcolor = gtk.gdk.color_parse('#ffffff')
@@ -258,7 +260,7 @@ class window:
 
     def create_Excel(self,widget,event):
         begin_dialog = gtk.Dialog();
-	begin_dialog.set_title("生成表格")
+        begin_dialog.set_title("生成表格")
 	
         table = gtk.Table(20,200);
         table.column_num = 1
@@ -319,77 +321,72 @@ class window:
 
         begin_dialog.run();
 
-
-
-        # for server in self.serverInfo:
-        #     v = self.serverInfo[server]["vTerminal"]
-        #     x,y = v.get_cursor_position()
-        #     content = v.get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
-        #
-        #
         pass
 
     def load_information(self,widget,event):
-        book=xlrd.open_workbook("information.xls")
-        sh=book.sheet_by_index(0)
-        servers = sh.col_values(0)
-        target = sh.col_values(1)
+        try:	       
+           book=xlrd.open_workbook("information.xls")
+		   		  
+	   sh=book.sheet_by_index(0)
+           servers = sh.col_values(0)
+           target = sh.col_values(1)
 
-        num = 0
-        print servers
-        print target
-        print self.serverInfo
-        for server in servers:
-            if self.serverInfo.has_key(server):
-                self.serverInfo[server]["information"] = target[num]
-            num = num + 1;
+           num = 0
+           for server in servers:
+              if self.serverInfo.has_key(server):
+                 self.serverInfo[server]["information"] = target[num]
+              num = num + 1;
 
-        for server in self.serverInfo:
-            self.serverInfo[server]["vTerminal"].feed_child(self.serverInfo[server]["information"])
-
-
+           for server in self.serverInfo:
+	      if self.serverInfo[server]["information"] == "":
+	         print self.serverInfo[server]["serverName"] + " not found in ./information.xls."
+	      else:
+	         self.serverInfo[server]["vTerminal"].feed_child(self.serverInfo[server]["information"])
+	except (IOError),x:
+	   show_message("在脚本当前目录下没有information.xls文件", "错误")
 
     def build_Menu(self):
-       menu1 = gtk.Menu();
-       menu2 = gtk.Menu();
-       menuItem1_1 = gtk.MenuItem("1:1");
-       menuItem1_2 = gtk.MenuItem("1:2");
-       menuItem1_3 = gtk.MenuItem("1:3");
-       menuItem2_1 = gtk.MenuItem("全选");
-       menuItem2_2 = gtk.MenuItem("反选");
-       menuItem2_3 = gtk.MenuItem("正则选择");
-       menuItem2_4 = gtk.MenuItem("添加服务器");
-       menuItem2_5 = gtk.MenuItem("生成报表");
-       menuItem2_6 = gtk.MenuItem("上下文选择");
-       menuItem2_7 = gtk.MenuItem("信息载入")
-       menu1.append(menuItem1_1)
-       menu1.append(menuItem1_2)
-       menu1.append(menuItem1_3)
-       menu2.append(menuItem2_1)
-       menu2.append(menuItem2_2)
-       menu2.append(menuItem2_3)
-       menu2.append(menuItem2_4)
-       menu2.append(menuItem2_5)
-       menu2.append(menuItem2_6)
-       menu2.append(menuItem2_7)
+        menu1 = gtk.Menu();
+        menu2 = gtk.Menu();
+        menuItem1_1 = gtk.MenuItem("1:1");
+        menuItem1_2 = gtk.MenuItem("1:2");
+        menuItem1_3 = gtk.MenuItem("退出");
+        menuItem2_1 = gtk.MenuItem("全选");
+        menuItem2_2 = gtk.MenuItem("反选");
+        menuItem2_3 = gtk.MenuItem("正则选择");
+        menuItem2_4 = gtk.MenuItem("添加服务器");
+        menuItem2_5 = gtk.MenuItem("生成报表");
+        menuItem2_6 = gtk.MenuItem("上下文选择");
+        menuItem2_7 = gtk.MenuItem("信息载入")
+        menu1.append(menuItem1_1)
+        menu1.append(menuItem1_2)
+        menu1.append(menuItem1_3)
+        menu2.append(menuItem2_1)
+        menu2.append(menuItem2_2)
+        menu2.append(menuItem2_3)
+        menu2.append(menuItem2_4)
+        menu2.append(menuItem2_5)
+        menu2.append(menuItem2_6)
+        menu2.append(menuItem2_7)
 
-       first_menu = gtk.MenuItem("First Menu")
-       second_menu = gtk.MenuItem("服务器操作")
-       first_menu.set_submenu(menu1)
-       second_menu.set_submenu(menu2)
+        first_menu = gtk.MenuItem("First Menu")
+        second_menu = gtk.MenuItem("服务器操作")
+        first_menu.set_submenu(menu1)
+        second_menu.set_submenu(menu2)
 
-       menuItem2_1.connect("button-press-event",self.select_Server,1);
-       menuItem2_2.connect("button-press-event",self.select_Server,2);
-       menuItem2_3.connect("button-press-event",self.select_Server,3);
-       menuItem2_4.connect("button-press-event",self.add_Server);
-       menuItem2_5.connect("button-press-event",self.create_Excel);
-       menuItem2_7.connect("button-press-event",self.load_information);
+	menuItem1_3.connect("button-press-event",self.destroy);
+        menuItem2_1.connect("button-press-event",self.select_Server,1);
+        menuItem2_2.connect("button-press-event",self.select_Server,2);
+        menuItem2_3.connect("button-press-event",self.select_Server,3);
+        menuItem2_4.connect("button-press-event",self.add_Server);
+        menuItem2_5.connect("button-press-event",self.create_Excel);
+        menuItem2_7.connect("button-press-event",self.load_information);
 
-       menu_bar = gtk.MenuBar()
-       menu_bar.append (first_menu)
-       menu_bar.append (second_menu)
+        menu_bar = gtk.MenuBar()
+        menu_bar.append (first_menu)
+        menu_bar.append (second_menu)
 
-       return menu_bar
+        return menu_bar
 
     def build_Note(self,loginid='None',defcmd='N'):
         noteBook = gtk.Notebook();
@@ -409,14 +406,15 @@ class window:
             self.serverInfo[server] = {
                     "serverName":server,
                     "vTerminal":vTerminal,
-                    "checkButton":checkButton
+                    "checkButton":checkButton,
+		    "information":""
                 }
             vTerminal.fork_command()
 
 	    if defcmd == 'Y' or defcmd == 'y' or defcmd == 'yes':
-                pass
+              pass
 	    else:
-		vTerminal.feed_child("ssh " + loginid +"@" + server + "\n")
+	        vTerminal.feed_child("ssh " + loginid +"@" + server + "\n")
             
 #	    vTerminal.feed_child("echo ssh "+ loginid +"@" + server)
 	    #change color

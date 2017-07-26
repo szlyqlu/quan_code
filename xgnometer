@@ -78,13 +78,14 @@ class window:
                 command_num = command_num + 1
 
             for i in range(0,commands.__len__()):
-                print result[commands[i]]
+#                print result[commands[i]]
                 sheet.write(server_num + 1,i + 1,"\n".join(result[commands[i]]))
 
             server_num = server_num + 1
 
         book.save("result1.xls")
-
+	show_message("表格创建完成，在当前目录下的result1.xls", "完成")
+	
     def send_log(self,event,server):
         v = self.serverInfo[server]["vTerminal"]
         x,y = v.get_cursor_position()
@@ -118,7 +119,7 @@ class window:
                 file_object.close()
 
     def destroy(self, widget, data=None):
-        print "destroy"
+        print "***程序关闭***"
 	self.save_log()
         gtk.main_quit()
 
@@ -207,7 +208,11 @@ class window:
                 checkButton = gtk.CheckButton(server);
                 checkButton.set_active(True);
                 #vbox.add(checkButton);
-
+	    	vtebox = gtk.VBox(False, 0);
+	    	vtebox.show();
+	    	vtesw = gtk.ScrolledWindow();
+            	vtesw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+		
                 vTerminal = vte.Terminal();               
 
                 self.serverInfo[server] = {
@@ -217,11 +222,6 @@ class window:
                         "information":""
                     }
                 vTerminal.fork_command()
-#                if defcmd == 'Y' or defcmd == 'y' or defcmd == 'yes':
-#                    pass
-#	        else:
-#		    vTerminal.feed_child("ssh " + loginid +"@" + server + "\n")
-	        #change color
 	        fgcolor = gtk.gdk.color_parse('#000000')
                 bgcolor = gtk.gdk.color_parse('#ffffff')
                 colors =['#2e3436','#cc0000','#4e9a06','#c4a000','\
@@ -234,15 +234,20 @@ class window:
                 vTerminal.set_colors(fgcolor, bgcolor, palette)
 	        #change color
                 vTerminal.set_scrollback_lines (100000)
-                vTerminal.connect ("child-exited", self.exit_terminal,server)#contents-changed
+		vTerminal.connect ("child-exited", self.exit_terminal,server)#contents-changed
                 vTerminal.connect ("contents-changed", self.send_log,server)
                 vTerminal.set_scroll_on_output(False);
-                self.noteBook.append_page(vTerminal,checkButton);
+
+	    	vtesw.add(vTerminal)
+	    	vtesw.show
+            	vtebox.pack_start(vtesw)
+
+                self.noteBook.append_page(vtebox,checkButton);
                 self.noteBook.show_all()
 
         else:
-            show_message("The script has exited.","Information");
-        dialog.destroy();
+            #show_message("The script has exited.","Information");
+            dialog.destroy();
 
     def add_Server(self,widget,event):
         begin_dialog = gtk.Dialog();
@@ -348,39 +353,34 @@ class window:
     def build_Menu(self):
         menu1 = gtk.Menu();
         menu2 = gtk.Menu();
-        menuItem1_1 = gtk.MenuItem("1:1");
-        menuItem1_2 = gtk.MenuItem("1:2");
-        menuItem1_3 = gtk.MenuItem("退出");
+        menuItem1_1 = gtk.MenuItem("添加窗口");
+        menuItem1_2 = gtk.MenuItem("退出");
         menuItem2_1 = gtk.MenuItem("全选");
         menuItem2_2 = gtk.MenuItem("反选");
         menuItem2_3 = gtk.MenuItem("正则选择");
-        menuItem2_4 = gtk.MenuItem("添加服务器");
-        menuItem2_5 = gtk.MenuItem("生成报表");
-        menuItem2_6 = gtk.MenuItem("上下文选择");
-        menuItem2_7 = gtk.MenuItem("信息载入")
+        menuItem2_4 = gtk.MenuItem("生成报表");
+        menuItem2_5 = gtk.MenuItem("信息载入");
         menu1.append(menuItem1_1)
         menu1.append(menuItem1_2)
-        menu1.append(menuItem1_3)
         menu2.append(menuItem2_1)
         menu2.append(menuItem2_2)
         menu2.append(menuItem2_3)
         menu2.append(menuItem2_4)
         menu2.append(menuItem2_5)
-        menu2.append(menuItem2_6)
-        menu2.append(menuItem2_7)
 
-        first_menu = gtk.MenuItem("First Menu")
+
+        first_menu = gtk.MenuItem("主选单")
         second_menu = gtk.MenuItem("服务器操作")
         first_menu.set_submenu(menu1)
         second_menu.set_submenu(menu2)
-
-	menuItem1_3.connect("button-press-event",self.destroy);
+	
+        menuItem1_1.connect("button-press-event",self.add_Server);	
+	menuItem1_2.connect("button-press-event",self.destroy);
         menuItem2_1.connect("button-press-event",self.select_Server,1);
         menuItem2_2.connect("button-press-event",self.select_Server,2);
         menuItem2_3.connect("button-press-event",self.select_Server,3);
-        menuItem2_4.connect("button-press-event",self.add_Server);
-        menuItem2_5.connect("button-press-event",self.create_Excel);
-        menuItem2_7.connect("button-press-event",self.load_information);
+        menuItem2_4.connect("button-press-event",self.create_Excel);
+        menuItem2_5.connect("button-press-event",self.load_information);
 
         menu_bar = gtk.MenuBar()
         menu_bar.append (first_menu)
@@ -390,16 +390,18 @@ class window:
 
     def build_Note(self,loginid='None',defcmd='N'):
         noteBook = gtk.Notebook();
-
         noteBook.set_tab_pos(gtk.POS_LEFT);
         noteBook.set_scrollable(True);
-
-
-
+	
         for server in self.servers:
             checkButton = gtk.CheckButton(server);
             checkButton.set_active(True);
-            #vbox.add(checkButton);
+            #vbox.add(checkButton)
+
+	    vtebox = gtk.VBox(False, 0);
+	    vtebox.show();
+	    vtesw = gtk.ScrolledWindow();
+            vtesw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 
             vTerminal = vte.Terminal();
 
@@ -429,36 +431,53 @@ class window:
                     palette.append(gtk.gdk.color_parse(color))
             vTerminal.set_colors(fgcolor, bgcolor, palette)
 	    #change color
-            vTerminal.set_size_request(1280,720)
+            vTerminal.set_size_request(1000,720)
             vTerminal.set_scrollback_lines (100000)
             vTerminal.connect ("child-exited", self.exit_terminal,server)#contents-changed
             vTerminal.connect ("contents-changed", self.send_log,server)
             vTerminal.set_scroll_on_output(False);
-
-            noteBook.append_page(vTerminal,checkButton);
+	    
+	    vtesw.add(vTerminal)
+	    vtesw.show
+            vtebox.pack_start(vtesw)
+	    
+            noteBook.append_page(vtebox,checkButton);
 
         return noteBook;
 
     def build_MessageView(self):
+	box1 = gtk.VBox(False, 0);
+	box1.set_border_width(1);
+	box1.show();
+	sw = gtk.ScrolledWindow();
+        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+
         MessageView = gtk.TextView();
 
         b = gtk.TextBuffer();
-        b.set_text("test")
+        b.set_text("临时笔记区")
 
         MessageView.set_buffer(b);
+	sw.add(MessageView);
+	sw.show();
         MessageView.show();
-
-        return MessageView;
+	
+        box1.pack_start(sw);
+	
+	return box1
 
     def build_InputEntry(self):
         inputEntry = gtk.Entry();
-#	inputEntry.set_invisible_char("*")
 	inputEntry.set_visibility(False)
         inputEntry.connect("key_press_event",self.send_key_event)
         inputEntry.connect("key_release_event",self.send_key_event)
         inputEntry.connect("paste_clipboard",self.copy)
-
+	
         return inputEntry;
+
+    def build_blabel(self,string=None):
+	blabel = gtk.Label(string);
+	return blabel;
 
     def __init__(self,servers):
         self.servers = servers;
@@ -469,15 +488,19 @@ class window:
 
         inputEntry = self.build_InputEntry();
         menuBar = self.build_Menu();
+	blabel = self.build_blabel("并行输入->>>>");
+	versioninfo = self.build_blabel("目前版本0.6 alph");
         self.noteBook = self.build_Note(loginid,defcmd);
-#        self.messageView = self.build_MessageView();
+        self.messageView = self.build_MessageView();
 
         table.attach(menuBar,0,60,0,10);
         table.attach(self.noteBook,0,50,11,50, gtk.EXPAND, gtk.FILL);
-#        table.attach(self.messageView, 51, 60, 11, 50);
-        table.attach(inputEntry,0,60,51,60)
+        table.attach(self.messageView, 51, 200, 11, 50);
+	table.attach(blabel, 0, 3, 51, 60);
+        table.attach(inputEntry,3,40,51,60);
+	table.attach(versioninfo,41,60,51,60)
 
-        self.window.set_default_size(1280,720);
+        self.window.set_default_size(1280,800);
         self.window.add(table);
         self.window.show_all();
 
@@ -486,8 +509,8 @@ class window:
 
         gtk.main();
 
-print "Verion 1.0 beta"
-defcmd = raw_input("是否只用bash开始，配合information.xls可以有妙用[Y/N]")
+print "Verion 0.6 alph"
+defcmd = raw_input("是否只用shell开始，配合information.xls可以有妙用[Y/N]")
 
 if defcmd == 'N' or defcmd == 'NO' or defcmd == 'n' or defcmd == 'no':
     while 1:

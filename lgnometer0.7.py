@@ -247,7 +247,7 @@ class window:
                        palette.append(gtk.gdk.color_parse(color))
                 vTerminal.set_colors(fgcolor, bgcolor, palette)
 	        #change color
-                vTerminal.set_scrollback_lines (10000)
+                vTerminal.set_scrollback_lines (100000)
 	        logtimename = time.strftime('%Y%m%d%H%M',time.localtime())
                 vTerminal.connect ("contents-changed", self.save_log,server,logtimename)
 		vTerminal.connect ("child-exited", self.exit_terminal,server)#contents-changed
@@ -377,7 +377,7 @@ class window:
         menuItem1_2 = gtk.MenuItem("退出")
         menuItem2_1 = gtk.MenuItem("全选")
         menuItem2_2 = gtk.MenuItem("反选")
-        menuItem2_3 = gtk.MenuItem("正则选择")
+        menuItem2_3 = gtk.MenuItem("正则选择(测试)")
         menuItem2_4 = gtk.MenuItem("生成报表")
         menuItem2_5 = gtk.MenuItem("信息载入")
 	menuItem2_6 = gtk.MenuItem("输入窗口标题")
@@ -465,8 +465,8 @@ class window:
                     palette.append(gtk.gdk.color_parse(color))
             vTerminal.set_colors(fgcolor, bgcolor, palette)
 	    #change color
-            vTerminal.set_size_request(800,600)
-            vTerminal.set_scrollback_lines (10000)
+            vTerminal.set_size_request(600,400)
+            vTerminal.set_scrollback_lines (100000)
 	    logtimename = time.strftime('%Y%m%d%H%M',time.localtime())
             vTerminal.connect ("contents-changed", self.save_log,server,logtimename)
             vTerminal.connect ("child-exited", self.exit_terminal,server)#contents-changed
@@ -518,26 +518,39 @@ class window:
         self.servers = servers
         self.serverInfo = {}
 
-        table = gtk.Table(60,50)
-        self.window = gtk.Window()
+        #table = gtk.Table(60,50)
+        self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
 
         inputEntry = self.build_InputEntry()
         menuBar = self.build_Menu()
-	blabel = self.build_blabel("并行输入->>>>")
+	blabel = self.build_blabel("下方输入框可同时控制")
 	versioninfo = self.build_blabel("目前版本0.7 alpha")
         self.noteBook = self.build_Note(loginid,defcmd)
         self.messageView = self.build_MessageView()
 
-        table.attach(menuBar,0,60,0,10)
+        #table.attach(menuBar,0,60,0,10)
         #table.attach(self.noteBook,0,60,11,50, gtk.EXPAND, gtk.FILL)
-	table.attach(self.noteBook,0,60,11,50)
+	#table.attach(self.noteBook,0,60,11,50)
 #        table.attach(self.messageView, 61, 100, 11, 50)
-	table.attach(blabel, 0, 3, 51, 60)
-        table.attach(inputEntry,3,40,51,60)
-	table.attach(versioninfo,41,60,51,60)
+	#table.attach(blabel, 0, 3, 51, 60)
+        #table.attach(inputEntry,3,40,51,60)
+	#table.attach(versioninfo,41,60,51,60)
 
-        self.window.set_default_size(1000,600)
-        self.window.add(table)
+        self.window.set_default_size(800,600)
+
+	main_vbox = gtk.VBox(False, 1)
+	main_vbox.set_border_width(1)
+        self.window.add(main_vbox)
+	main_vbox.show()
+        main_vbox.pack_start(menuBar, False, False, 0)
+        menuBar.show()
+        main_vbox.pack_start(self.noteBook, True, True, 0)
+        self.noteBook.show()
+
+        main_vbox.pack_start(blabel, False, False, 0)
+	blabel.show()
+	main_vbox.pack_start(inputEntry, False, False, 0)
+	inputEntry.show()
         self.window.show_all()
 
         self.window.connect("delete_event", self.delete_event)

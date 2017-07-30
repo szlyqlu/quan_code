@@ -198,6 +198,7 @@ class window:
         if response_id == 1:
            server_string = dialog.get_action_area().get_children()[2].get_text()
            servers = server_string.split(" ")
+	   defcmd = 'Y'
            for server in servers:
                if server in self.servers:
                    print server + " has been in tabs."

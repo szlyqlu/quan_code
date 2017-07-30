@@ -3,7 +3,6 @@
 import gtk
 import vte
 import time
-import re
 import xlwt
 import xlrd
 import os
@@ -138,8 +137,8 @@ class window:
 
         self.serverInfo.pop(server)
         #没有server了则直接关闭窗口
-        if self.noteBook.get_n_pages() == 0:
-            self.window.destroy()
+        #if self.noteBook.get_n_pages() == 0:
+        #    self.window.destroy()
 
     def send_key_event(self,widget,event):
         for server in self.serverInfo:
@@ -171,14 +170,13 @@ class window:
         elif pattern ==3:
             def get_response(dialog,response_id):
                 if response_id == 1:
-                    regex = dialog.get_action_area().get_children()[2].get_text()
-                    for key in self.serverInfo:
-                        s = re.match(regex,self.serverInfo[key]['serverName'])
-                        #print s
-                        if s:
-                            self.serverInfo[key]['checkButton'].set_active(True)
-                        else:
-                            self.serverInfo[key]['checkButton'].set_active(False)
+                   chsvrs = dialog.get_action_area().get_children()[2].get_text()
+                   chsvrlist = chsvrs.split(" ")
+                   for key in self.serverInfo:
+                      if self.serverInfo[key]["serverName"] in chsvrlist:
+                         self.serverInfo[key]['checkButton'].set_active(True)
+                      else:
+                         self.serverInfo[key]['checkButton'].set_active(False)
                 else:
                     #show_message("The script has exited.","Information")
                     dialog.destroy()
@@ -186,7 +184,7 @@ class window:
             begin_dialog = gtk.Dialog()
             begin_dialog_entry = gtk.Entry()
 
-            begin_dialog.set_title("请输入筛选的正则表达式")
+            begin_dialog.set_title("请输入要选择的对象,空格隔开")
             begin_dialog.add_action_widget(begin_dialog_entry,0)
             begin_dialog.add_button("OK",1)
             begin_dialog.add_button("CANCEL",2)
@@ -198,71 +196,84 @@ class window:
 
     def get_Addresponse(self,dialog,response_id,loginid='None',defcmd='N'):
         if response_id == 1:
-            server_string = dialog.get_action_area().get_children()[2].get_text()
-            servers = server_string.split(" ")
-            for server in servers:
-                if server in self.servers:
-                    print server + " has been in tabs."
-                    continue
-                else:
-                    self.servers.append(server)
+           server_string = dialog.get_action_area().get_children()[2].get_text()
+           servers = server_string.split(" ")
+           for server in servers:
+               if server in self.servers:
+                   print server + " has been in tabs."
+                   continue
+               else:
+                   self.servers.append(server)
 
-	        labbox = gtk.HBox(False, 0)
-	        labbox.show()
-                checkButton = gtk.CheckButton(" ")
-                checkButton.set_active(True)
-	        checkButton.show()
+		   labbox = gtk.HBox(False, 0)
+	           labbox.show()
+                   checkButton = gtk.CheckButton()
+                   checkButton.set_active(True)
+	           checkButton.show()
 	    
-	        labbox.pack_start(checkButton)
+	           labbox.pack_start(checkButton)
 	    
-	        vlabel = gtk.Label(server)
-	        vlabel.show()
-	        labbox.pack_start(vlabel)
-		
-                #vbox.add(checkButton)
+	           vlabel = gtk.Label(server)
+	           vlabel.show()
+	           labbox.pack_start(vlabel)
 
-	    	vtebox = gtk.VBox(False, 0)
-	    	vtebox.show()
-	    	vtesw = gtk.ScrolledWindow()
-            	vtesw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-		
-                vTerminal = vte.Terminal()               
+                   acvtebox = self.cvtebox(loginid,defcmd,server,checkButton)
+                   self.noteBook.append_page(acvtebox,labbox)
 
-                self.serverInfo[server] = {
-                        "serverName":server,
-                        "vTerminal":vTerminal,
-                        "checkButton":checkButton,
-                        "information":"",
-			"vtebox":vtebox
-                    }
-                vTerminal.fork_command()
-	        fgcolor = gtk.gdk.color_parse('#000000')
-                bgcolor = gtk.gdk.color_parse('#ffffff')
-                colors =['#2e3436','#cc0000','#4e9a06','#c4a000','\
-#3465a4','#75507b','#06989a','#d3d7cf','#555753','#ef2929','#8ae234','#fce94f','\
-#729fcf','#ad7fa8','#34e2e2','#eeeeec']
-                palette = []
-                for color in colors:
-                   if color:
-                       palette.append(gtk.gdk.color_parse(color))
-                vTerminal.set_colors(fgcolor, bgcolor, palette)
-	        #change color
-                vTerminal.set_scrollback_lines (100000)
-	        logtimename = time.strftime('%Y%m%d%H%M',time.localtime())
-                vTerminal.connect ("contents-changed", self.save_log,server,logtimename)
-		vTerminal.connect ("child-exited", self.exit_terminal,server)#contents-changed
-                vTerminal.set_scroll_on_output(False)
-
-	    	vtesw.add(vTerminal)
-	    	vtesw.show
-            	vtebox.pack_start(vtesw)
-
-                self.noteBook.append_page(vtebox,labbox)
-                self.noteBook.show_all()
+                   self.noteBook.show_all()
 
         else:
             #show_message("The script has exited.","Information")
             dialog.destroy()
+
+
+    def cvtebox(self,loginid='None',defcmd='N',server=None,checkButton=None):
+        vtebox = gtk.VBox(False, 0)
+	vtebox.show()
+	vtesw = gtk.ScrolledWindow()
+        vtesw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+
+        vTerminal = vte.Terminal()
+
+        self.serverInfo[server] = {
+                "serverName":server,
+                "vTerminal":vTerminal,
+                "checkButton":checkButton,
+	        "information":"",
+		"vtebox":vtebox
+        }
+	    #print self.serverInfo[server]
+        vTerminal.fork_command()
+
+	if defcmd == 'Y' or defcmd == 'y' or defcmd == 'yes':
+           pass
+	else:
+	   vTerminal.feed_child("ssh " + loginid +"@" + server + "\n")
+            
+#	    vTerminal.feed_child("echo ssh "+ loginid +"@" + server)
+	    #change color
+	fgcolor = gtk.gdk.color_parse('#000000')
+        bgcolor = gtk.gdk.color_parse('#ffffff')
+        colors =['#2e3436','#cc0000','#4e9a06','#c4a000','\
+#3465a4','#75507b','#06989a','#d3d7cf','#555753','#ef2929','#8ae234','#fce94f','\
+#729fcf','#ad7fa8','#34e2e2','#eeeeec']
+        palette = []
+        for color in colors:
+           if color:
+              palette.append(gtk.gdk.color_parse(color))
+        vTerminal.set_colors(fgcolor, bgcolor, palette)
+	 #change color
+        vTerminal.set_size_request(400,300)
+        vTerminal.set_scrollback_lines (100000)
+	logtimename = time.strftime('%Y%m%d%H%M',time.localtime())
+        vTerminal.connect ("contents-changed", self.save_log,server,logtimename)
+        vTerminal.connect ("child-exited", self.exit_terminal,server)#contents-changed
+        vTerminal.set_scroll_on_output(False)
+	   
+	vtesw.add(vTerminal)
+	vtesw.show
+        vtebox.pack_start(vtesw)
+	return vtebox
 
     def add_Server(self,widget,event):
         begin_dialog = gtk.Dialog()
@@ -373,40 +384,44 @@ class window:
     def build_Menu(self):
         menu1 = gtk.Menu()
         menu2 = gtk.Menu()
+	menu3 = gtk.Menu()
         menuItem1_1 = gtk.MenuItem("添加窗口")
         menuItem1_2 = gtk.MenuItem("退出")
         menuItem2_1 = gtk.MenuItem("全选")
         menuItem2_2 = gtk.MenuItem("反选")
-        menuItem2_3 = gtk.MenuItem("正则选择(测试)")
-        menuItem2_4 = gtk.MenuItem("生成报表")
-        menuItem2_5 = gtk.MenuItem("信息载入")
-	menuItem2_6 = gtk.MenuItem("输入窗口标题")
+        menuItem2_3 = gtk.MenuItem("指定选择窗口")
+	menuItem2_4 = gtk.MenuItem("输入窗口标题")
+        menuItem3_1 = gtk.MenuItem("生成报表")
+        menuItem3_2 = gtk.MenuItem("信息载入")
         menu1.append(menuItem1_1)
         menu1.append(menuItem1_2)
         menu2.append(menuItem2_1)
         menu2.append(menuItem2_2)
         menu2.append(menuItem2_3)
         menu2.append(menuItem2_4)
-        menu2.append(menuItem2_5)
-	menu2.append(menuItem2_6)
+        menu3.append(menuItem3_1)
+	menu3.append(menuItem3_2)
 
         first_menu = gtk.MenuItem("主选单")
-        second_menu = gtk.MenuItem("服务器操作")
+        second_menu = gtk.MenuItem("窗口操作")
+	third_menu = gtk.MenuItem("表格联动")
         first_menu.set_submenu(menu1)
         second_menu.set_submenu(menu2)
+	third_menu.set_submenu(menu3)
 	
         menuItem1_1.connect("button-press-event",self.add_Server)	
 	menuItem1_2.connect("button-press-event",self.destroy)
         menuItem2_1.connect("button-press-event",self.select_Server,1)
         menuItem2_2.connect("button-press-event",self.select_Server,2)
         menuItem2_3.connect("button-press-event",self.select_Server,3)
-        menuItem2_4.connect("button-press-event",self.create_Excel)
-        menuItem2_5.connect("button-press-event",self.load_information)
-	menuItem2_6.connect("button-press-event",self.put_servertitle)
+	menuItem2_4.connect("button-press-event",self.put_servertitle)
+        menuItem3_1.connect("button-press-event",self.create_Excel)
+        menuItem3_2.connect("button-press-event",self.load_information)
 	
         menu_bar = gtk.MenuBar()
         menu_bar.append (first_menu)
         menu_bar.append (second_menu)
+	menu_bar.append (third_menu)
 
         return menu_bar
 
@@ -416,69 +431,21 @@ class window:
         noteBook.set_scrollable(True)
 	
         for server in self.servers:
-	    labbox = gtk.HBox(False, 0)
-	    labbox.show()
-            checkButton = gtk.CheckButton(" ")
-            checkButton.set_active(True)
-	    checkButton.show()
+	   labbox = gtk.HBox(False, 0)
+	   labbox.show()
+           checkButton = gtk.CheckButton()
+           checkButton.set_active(True)
+	   checkButton.show()
 	    
-	    labbox.pack_start(checkButton)
-	    
-	    vlabel = gtk.Label(server)
-	    vlabel.show()
-	    labbox.pack_start(vlabel)
+	   labbox.pack_start(checkButton)
+	   vlabel = gtk.Label(server)
+	   vlabel.show()
+	   labbox.pack_start(vlabel)
 
-            #vbox.add(checkButton)
-
-	    vtebox = gtk.VBox(False, 0)
-	    vtebox.show()
-	    vtesw = gtk.ScrolledWindow()
-            vtesw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-
-            vTerminal = vte.Terminal()
-
-            self.serverInfo[server] = {
-                    "serverName":server,
-                    "vTerminal":vTerminal,
-                    "checkButton":checkButton,
-		    "information":"",
-		    "vtebox":vtebox
-                }
-	    #print self.serverInfo[server]
-            vTerminal.fork_command()
-
-	    if defcmd == 'Y' or defcmd == 'y' or defcmd == 'yes':
-              pass
-	    else:
-	        vTerminal.feed_child("ssh " + loginid +"@" + server + "\n")
-            
-#	    vTerminal.feed_child("echo ssh "+ loginid +"@" + server)
-	    #change color
-	    fgcolor = gtk.gdk.color_parse('#000000')
-            bgcolor = gtk.gdk.color_parse('#ffffff')
-            colors =['#2e3436','#cc0000','#4e9a06','#c4a000','\
-#3465a4','#75507b','#06989a','#d3d7cf','#555753','#ef2929','#8ae234','#fce94f','\
-#729fcf','#ad7fa8','#34e2e2','#eeeeec']
-            palette = []
-            for color in colors:
-                if color:
-                    palette.append(gtk.gdk.color_parse(color))
-            vTerminal.set_colors(fgcolor, bgcolor, palette)
-	    #change color
-            vTerminal.set_size_request(600,400)
-            vTerminal.set_scrollback_lines (100000)
-	    logtimename = time.strftime('%Y%m%d%H%M',time.localtime())
-            vTerminal.connect ("contents-changed", self.save_log,server,logtimename)
-            vTerminal.connect ("child-exited", self.exit_terminal,server)#contents-changed
-            vTerminal.set_scroll_on_output(False)
-	    
-	    vtesw.add(vTerminal)
-	    vtesw.show
-            vtebox.pack_start(vtesw)
-	    
-            noteBook.append_page(vtebox,labbox)
-
+	   nvtebox = self.cvtebox(loginid,defcmd,server,checkButton)
+	   noteBook.append_page(nvtebox,labbox)
         return noteBook
+
 
     def build_MessageView(self):
 	box1 = gtk.VBox(False, 0)
@@ -520,10 +487,12 @@ class window:
 
         #table = gtk.Table(60,50)
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+	self.window.set_title("lgnometer")
 
         inputEntry = self.build_InputEntry()
         menuBar = self.build_Menu()
-	blabel = self.build_blabel("下方输入框可同时控制")
+	blabel = self.build_blabel("统计功能用(开发中)")
+	input_label = self.build_blabel("并行操作->>>")
 	versioninfo = self.build_blabel("目前版本0.7 alpha")
         self.noteBook = self.build_Note(loginid,defcmd)
         self.messageView = self.build_MessageView()
@@ -536,7 +505,7 @@ class window:
         #table.attach(inputEntry,3,40,51,60)
 	#table.attach(versioninfo,41,60,51,60)
 
-        self.window.set_default_size(800,600)
+        self.window.set_default_size(600,400)
 
 	main_vbox = gtk.VBox(False, 1)
 	main_vbox.set_border_width(1)
@@ -549,8 +518,20 @@ class window:
 
         main_vbox.pack_start(blabel, False, False, 0)
 	blabel.show()
-	main_vbox.pack_start(inputEntry, False, False, 0)
+
+	input_hbox = gtk.HBox(False, 1)
+	input_hbox.set_border_width(1)
+	input_hbox.pack_start(input_label, False, False, 0)
+	input_label.show()
+	input_hbox.pack_start(inputEntry, True, True, 0)
 	inputEntry.show()
+	input_hbox.pack_start(versioninfo, False, False, 0)
+	versioninfo.show()
+	main_vbox.pack_start(input_hbox, False, False, 0)
+	input_hbox.show()
+
+	#main_vbox.pack_start(inputEntry, False, False, 0)
+	#inputEntry.show()
         self.window.show_all()
 
         self.window.connect("delete_event", self.delete_event)
@@ -559,7 +540,7 @@ class window:
         gtk.main()
 
 print "Verion 0.7 alpha"
-defcmd = raw_input("是否只用shell开始，配合information.xls可以有妙用[Y/N]")
+defcmd = raw_input("是否只用shell开始[Y/N]")
 
 if defcmd == 'N' or defcmd == 'NO' or defcmd == 'n' or defcmd == 'no':
     while 1:

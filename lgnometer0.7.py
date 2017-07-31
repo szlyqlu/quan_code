@@ -136,6 +136,7 @@ class window:
         self.noteBook.remove_page(page_num)
 
         self.serverInfo.pop(server)
+	self.servers.remove(server)
         #没有server了则直接关闭窗口
         #if self.noteBook.get_n_pages() == 0:
         #    self.window.destroy()

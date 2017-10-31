@@ -6,6 +6,7 @@ import time
 import xlwt
 import xlrd
 import os
+import re
 
 def show_message(message,title):
     message_dialog = gtk.MessageDialog(None, 0, gtk.MESSAGE_INFO, gtk.BUTTONS_OK, None)
@@ -36,19 +37,55 @@ def begin():
     begin_dialog_entry.show()
     begin_dialog.run()
 
-def compare_list(x,y):
-    i = z = 0
+def compare_list_str(x,y):
+    z = 0.0
     s = len(x) + len(y)
-    
-    if len(x) != len(y):
-       result = float('0')
-    else:  
-       for i in range(len(x)):
-          if x[i] == y[i]:
-             z = z + 1
-             z = float(z)
-       result = z / s * 200
+    x.sort()
+    y.sort()
+    value = re.compile(r'^[0-9]')
+    if len(x) > len(y):
+        for i in range(len(y)):
+            if y[i] == x[i]:
+                z = z + 1
+            else:
+                if value.match(y[i]):
+                    if y[i] in x:
+                        z = z + 1
+                elif len(x[i]) > len(y[i]):
+                    if y[i] in x[i]:
+                        z = z + len(y[i]) / len(x[i])
+                elif len(x[i]) < len(y[i]):
+                    if x[i] in y[i]:
+                        z = z + len(x[i]) / len(y[i])
+                elif len(x[i]) == len(y[i]):
+                    b = 0.0
+                    for a in range(len(x[i])):
+                        if x[i][a] == y[i][a]:
+                            b = b + 1.0 / len(x[i])
+                    z = z + b
+    else:
+        for i in range(len(x)):
+            if y[i] == x[i]:
+                z = z + 1
+            else:
+                if value.match(x[i]):
+                    if x[i] in y:
+                        z = z + 1
+                elif len(x[i]) > len(y[i]):
+                    if y[i] in x[i]:
+                        z = z + len(y[i]) / len(x[i])
+                elif len(x[i]) < len(y[i]):
+                    if x[i] in y[i]:
+                        z = z + len(x[i]) / len(y[i])
+                elif len(x[i]) == len(y[i]):
+                    b = 0.0
+                    for a in range(len(x[i])):
+                        if x[i][a] == y[i][a]:
+                            b = b + 1.0 / len(x[i])
+                    z = z + b        
+    result = z / s * 200
     return result
+
 
 class window:
     def build_excel(self,commands):
@@ -171,7 +208,11 @@ class window:
             # content = v.get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
             # print content
             widget.set_text("")
+        #排除特殊按键的窗口切换，上方向键和tab键
         elif event.keyval == gtk.keysyms.Up:
+            return True
+        elif event.keyval == gtk.keysyms.Tab:
+            widget.set_text("")
             return True
 
     def copy(self,widget):
@@ -229,7 +270,7 @@ class window:
 	   #defcmd = 'Y'
            for server in servers:
                if server in self.servers:
-                   print server + " has been in tabs."
+                   print server + " 重复了，无法开启多一个窗口，请别名，例如: " + svr + "_1"
                    continue
                else:
                    self.servers.append(server)
@@ -449,58 +490,66 @@ class window:
     	    if self.serverInfo[server]['checkButton'].get_active():
                 self.serverInfo[server]["vTerminal"].feed_child(self.serverInfo[server]["serverName"])
 
-    def com_result(self,widget,base_entry=None):
+    def com_result_bykey(self,widget,base_entry=None):
 
         base_server = base_entry.get_text()
-        def_linenum = 6
-        cus_linenum = 0
         result_dict = {}
         if ':' in base_server:
             base_server = base_entry.get_text().split(':')[0]
-            cus_linenum = int(base_entry.get_text().split(':')[-1])
-
-        if cus_linenum != 0:
-            if cus_linenum < def_linenum:
-                result_dict = self.last_contentfun(base_server,def_linenum)
-            else:
-                result_dict = self.last_contentfun(base_server,cus_linenum)
+            cus_keyword = str(base_entry.get_text().split(':')[-1])
         else:
-            result_dict = self.last_contentfun(base_server,def_linenum)
-        
-        result_list = sorted(result_dict.items(),key=lambda x:x[1],reverse=True)
-
-        print "***" + time.strftime('%Y-%m-%d %H:%M:%S',time.localtime()) + " 确认结果如下"
-
-        for onere in result_list:
-            if onere[-1] < 70.0:
-                if onere[-1] > 50.0:
-                    print onere[0],'is \033[1;33m',format(onere[-1],'0.4'),'%\033[0m'
-                else:
-                    print onere[0],'is \033[1;31m',format(onere[-1],'0.4'),'%\033[0m'
-            else:
-                print onere[0],'is \033[1;32m',format(onere[-1],'0.4'),'%\033[0m'
-
-    def last_contentfun(self, base_server=None, linenum=0):
-
-        result_list = {}
-
+            print "必须填入关键字,如：host1:keyword"
+            return 1
         v = self.serverInfo[base_server]["vTerminal"]
         x,y = v.get_cursor_position()
         content = self.serverInfo[base_server]["vTerminal"].get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
-        base_list = content.replace(self.serverInfo[base_server]["serverName"],"").split("\n")[0:-2]
-        if len(base_list) >= 6:
-            base_list = content.replace(self.serverInfo[base_server]["serverName"],"").split("\n")[-linenum:-2]
+        base_list = content.replace(self.serverInfo[base_server]["serverName"],"").split("\n")[0:-1]
+        base_list.reverse()
+        keylinenum = -9999
+        for line in base_list:
+            if cus_keyword in line:
+                keylinenum = base_list.index(line) + 1
+                break
+        base_list.reverse()
 
-        for server in self.servers:
-           if self.serverInfo[server]['checkButton'].get_active() and self.serverInfo[server]["serverName"] != base_server:
-               v = self.serverInfo[server]["vTerminal"]
-               x,y = v.get_cursor_position()
-               content = v.get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
-               last_con_list = content.replace(self.serverInfo[server]["serverName"],"").split("\n")[0:-2]
-               if len(last_con_list) >= 6:
-                   last_con_list = content.replace(self.serverInfo[server]["serverName"],"").split("\n")[-linenum:-2]
-               result_list[server] = round(compare_list(base_list,last_con_list),2)
-        return result_list
+        if keylinenum != -9999:
+            base_content = base_list[-keylinenum:]
+            #print base_content
+            for server in self.servers:
+                if self.serverInfo[server]['checkButton'].get_active() and self.serverInfo[server]["serverName"] != base_server:
+                    v = self.serverInfo[server]["vTerminal"]
+                    x,y = v.get_cursor_position()
+                    content = v.get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
+                    last_con_list = content.replace(self.serverInfo[server]["serverName"],"").split("\n")[0:-1]
+                    last_con_list.reverse()
+                    keylinenum = -9999
+                    for line in last_con_list:
+                        if cus_keyword in line:
+                            keylinenum = last_con_list.index(line) + 1
+                            break
+                    last_con_list.reverse()
+                    if keylinenum != -9999:
+                        target_content = last_con_list[-keylinenum:]
+                        #print self.serverInfo[server]["serverName"]
+                        #print target_content
+                        result_dict[server] = round(compare_list_str(base_content,target_content),2)
+                    else:
+                        result_dict[server] = 0.0
+            result_list = []    
+            result_list = sorted(result_dict.items(),key=lambda x:x[1],reverse=True)
+            
+            print "***" + time.strftime('%Y-%m-%d %H:%M:%S',time.localtime()) + " 确认结果如下"
+
+            for onere in result_list:
+                if onere[-1] < 70.0:
+                    if onere[-1] > 50.0:
+                        print onere[0],'is \033[1;33m',format(onere[-1],'0.4'),'%\033[0m'
+                    else:
+                        print onere[0],'is \033[1;31m',format(onere[-1],'0.4'),'%\033[0m'
+                else:
+                    print onere[0],'is \033[1;32m',format(onere[-1],'0.4'),'%\033[0m'            
+        else:
+            print "关键字:[" + cus_keyword + "]在" + base_server +"中没有找到,无法进行比较"
                  
     def build_Menu(self):
         menu1 = gtk.Menu()
@@ -613,9 +662,9 @@ class window:
 
         inputEntry = self.build_InputEntry()
         menuBar = self.build_Menu()
-	blabel = self.build_blabel("输出确认---》例：对象名[:后几行,默认后6行]")
+	blabel = self.build_blabel("输出确认---》例：基准对象名:[关键字]")
 	input_label = self.build_blabel("并行操作->>>")
-	versioninfo = self.build_blabel("目前版本0.9.1 alpha")
+	versioninfo = self.build_blabel("目前版本0.9.2 alpha")
         self.noteBook = self.build_Note(loginid,defcmd)
         self.messageView = self.build_MessageView()
 
@@ -634,11 +683,11 @@ class window:
         com_hbox.pack_start(blabel, False, False, 0)
         blabel.show()
         com_entry = gtk.Entry()
-        com_entry.set_text("对象名[:后几行]")
+        com_entry.set_text("基准对象名[:关键字]")
         com_hbox.pack_start(com_entry, False, False, 0)
         com_entry.show()
         com_button = gtk.Button("开始输出确认")
-        com_button.connect("clicked",self.com_result,com_entry)
+        com_button.connect("clicked",self.com_result_bykey,com_entry)
         com_hbox.pack_start(com_button, False, False, 0)
         com_button.show()
         main_vbox.pack_start(com_hbox, False, False, 0)
@@ -662,7 +711,7 @@ class window:
 
         gtk.main()
 
-print "Verion 0.9.1 alpha"
+print "Verion 0.9.2 alpha"
 defcmd = raw_input("是否只用shell开始[Y/N]")
 
 if defcmd == 'N' or defcmd == 'NO' or defcmd == 'n' or defcmd == 'no':
@@ -675,15 +724,20 @@ if defcmd == 'N' or defcmd == 'NO' or defcmd == 'n' or defcmd == 'no':
 else:
     loginid = ''
 
-print "***如果服务器数多的时候，需按两次回车执行***"
+print "***如果输入窗口数多的时候，需按两次回车执行***"
 
 while 1:
-    serverlist = raw_input("请输入服务器列表： ")
+    serverlist = raw_input("请输入窗口列表： ")
     if len(serverlist) == 0:
         print "***请不要输入空值，再次输入***"
     else:
         break
 
 serverlist = serverlist.split(" ")
-
-window = window(serverlist)
+new_svrs = []
+for svr in serverlist:
+   if svr not in new_svrs:
+      new_svrs.append(svr)
+   else:
+      print svr + " 重复了，无法开启多一个窗口，请别名，例如: " + svr + "_1"
+window = window(new_svrs)

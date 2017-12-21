@@ -7,6 +7,11 @@ import xlwt
 import xlrd
 import os
 import re
+import sys
+
+def CtrlCHandler(signum, frame):
+    current_time = time.time()
+    sys.exit(0)
 
 def show_message(message,title):
     message_dialog = gtk.MessageDialog(None, 0, gtk.MESSAGE_INFO, gtk.BUTTONS_OK, None)
@@ -40,23 +45,22 @@ def begin():
 def compare_list_str(x,y):
     z = 0.0
     s = len(x) + len(y)
-    x.sort()
-    y.sort()
-    value = re.compile(r'^[0-9]')
+    #x.sort()
+    #y.sort()
+    #value = re.compile(r'^[0-9]')
     if len(x) > len(y):
         for i in range(len(y)):
             if y[i] == x[i]:
                 z = z + 1
             else:
-                if value.match(y[i]):
-                    if y[i] in x:
-                        z = z + 1
+                if y[i] in x:
+                    z = z + 1
                 elif len(x[i]) > len(y[i]):
                     if y[i] in x[i]:
-                        z = z + len(y[i]) / len(x[i])
+                        z = z + float(len(y[i])) / len(x[i])
                 elif len(x[i]) < len(y[i]):
                     if x[i] in y[i]:
-                        z = z + len(x[i]) / len(y[i])
+                        z = z + float(len(x[i])) / len(y[i])
                 elif len(x[i]) == len(y[i]):
                     b = 0.0
                     for a in range(len(x[i])):
@@ -68,15 +72,14 @@ def compare_list_str(x,y):
             if y[i] == x[i]:
                 z = z + 1
             else:
-                if value.match(x[i]):
-                    if x[i] in y:
-                        z = z + 1
+                if x[i] in y:
+                    z = z + 1
                 elif len(x[i]) > len(y[i]):
                     if y[i] in x[i]:
-                        z = z + len(y[i]) / len(x[i])
+                        z = z + float(len(y[i])) / len(x[i])
                 elif len(x[i]) < len(y[i]):
                     if x[i] in y[i]:
-                        z = z + len(x[i]) / len(y[i])
+                        z = z + float(len(x[i])) / len(y[i])
                 elif len(x[i]) == len(y[i]):
                     b = 0.0
                     for a in range(len(x[i])):
@@ -147,10 +150,13 @@ class window:
             
     	if response == gtk.RESPONSE_OK:
             filename = dialog.get_filename()
+            dialog.destroy()
 	    return filename
     	elif response == gtk.RESPONSE_CANCEL:
+            filename = ""
             #print 'Cancel Clicked'
 	    dialog.destroy()
+            return filename
         dialog.destroy()
 	
     def send_log(self,event,server,logtimename=None):
@@ -312,7 +318,7 @@ class window:
         vtesw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 
         vTerminal = vte.Terminal()
-        
+        vTerminal.set_emulation("xterm")
 
         self.serverInfo[server] = {
                 "serverName":server,
@@ -347,7 +353,7 @@ class window:
               palette.append(gtk.gdk.color_parse(color))
         vTerminal.set_colors(fgcolor, bgcolor, palette)
 	#change color
-        vTerminal.set_size_request(400,300)
+        vTerminal.set_size_request(600,400)
         vTerminal.set_scrollback_lines (100000)
 	logtimename = time.strftime('%Y%m%d%H%M',time.localtime())
         vTerminal.connect ("contents-changed", self.save_log,server,logtimename)
@@ -464,6 +470,8 @@ class window:
     def load_information(self,widget,event):
 	filename = self.file_choose_dialog()
 	#show_message("文件名为" + filename,"测试")
+        if filename =="":
+            return
         try:	       
            book=xlrd.open_workbook(filename)
 		   		  
@@ -503,7 +511,7 @@ class window:
         v = self.serverInfo[base_server]["vTerminal"]
         x,y = v.get_cursor_position()
         content = self.serverInfo[base_server]["vTerminal"].get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
-        base_list = content.replace(self.serverInfo[base_server]["serverName"],"").split("\n")[0:-1]
+        base_list = content.replace(self.serverInfo[base_server]["serverName"],"").replace("# ","").replace("$ ","").split("\n")[0:-1]
         base_list.reverse()
         keylinenum = -9999
         for line in base_list:
@@ -520,7 +528,7 @@ class window:
                     v = self.serverInfo[server]["vTerminal"]
                     x,y = v.get_cursor_position()
                     content = v.get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
-                    last_con_list = content.replace(self.serverInfo[server]["serverName"],"").split("\n")[0:-1]
+                    last_con_list = content.replace(self.serverInfo[server]["serverName"],"").replace("# ","").replace("$ ","").split("\n")[0:-1]
                     last_con_list.reverse()
                     keylinenum = -9999
                     for line in last_con_list:
@@ -658,17 +666,19 @@ class window:
         self.serverInfo = {}
 
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+        self.window.set_position(gtk.WIN_POS_CENTER)
 	self.window.set_title("lgnometer")
 
         inputEntry = self.build_InputEntry()
         menuBar = self.build_Menu()
 	blabel = self.build_blabel("输出确认---》例：基准对象名:[关键字]")
 	input_label = self.build_blabel("并行操作->>>")
-	versioninfo = self.build_blabel("目前版本0.9.2 alpha")
+	versioninfo = self.build_blabel("目前版本0.9.3 alpha")
+        
         self.noteBook = self.build_Note(loginid,defcmd)
         self.messageView = self.build_MessageView()
 
-        self.window.set_default_size(600,400)
+        self.window.set_default_size(800,600)
 
 	main_vbox = gtk.VBox(False, 1)
 	main_vbox.set_border_width(1)
@@ -710,8 +720,9 @@ class window:
         self.window.connect("destroy", self.destroy)
 
         gtk.main()
+        
 
-print "Verion 0.9.2 alpha"
+print "Verion 0.9.3 alpha"
 defcmd = raw_input("是否只用shell开始[Y/N]")
 
 if defcmd == 'N' or defcmd == 'NO' or defcmd == 'n' or defcmd == 'no':
@@ -737,7 +748,15 @@ serverlist = serverlist.split(" ")
 new_svrs = []
 for svr in serverlist:
    if svr not in new_svrs:
-      new_svrs.append(svr)
+      if svr != '':
+         new_svrs.append(svr)
    else:
       print svr + " 重复了，无法开启多一个窗口，请别名，例如: " + svr + "_1"
-window = window(new_svrs)
+try:
+   window = window(new_svrs)
+except KeyboardInterrupt, e:
+   print "!!!警告，你输入了一个ctrl+c指令，为防止错误输入，请看下面"
+   endans = raw_input("是否要结束程序?(输入任何按键回车或是无视)")
+   if endans != "":
+      print "***程序中断***"
+      sys.exit()

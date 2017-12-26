@@ -168,16 +168,31 @@ class window:
         self.messageView.set_buffer(b)
 	#self.save_log(server,logtimename)
 
-    def save_log(self,event,server=None,logtimename=None):
+    def save_log(self,event,server=None):
         v = self.serverInfo[server]["vTerminal"]
         x,y = v.get_cursor_position()
         content = v.get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
 	todaydir = time.strftime('%Y%m%d',time.localtime())
 	if not os.path.exists(todaydir):
 	   os.makedirs(todaydir)
+        logtimename = self.serverInfo[server]["logtime"]
         file_object = open(todaydir + "/" + server + "." + logtimename + ".log","w")
         file_object.write(content)
         file_object.close()
+
+    def save_log_now(self,event):
+        for server in self.servers:
+           v = self.serverInfo[server]["vTerminal"]
+           x,y = v.get_cursor_position()
+           content = v.get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
+	   todaydir = time.strftime('%Y%m%d',time.localtime())
+	   if not os.path.exists(todaydir):
+	      os.makedirs(todaydir)
+           logtimename = self.serverInfo[server]["logtime"]
+           file_object = open(todaydir + "/" + server + "." + logtimename + ".log","w")
+           file_object.write(content)
+           file_object.close()             
+        print "***" + time.strftime('%Y-%m-%d %H:%M:%S',time.localtime()) + " 日志保存于[./" + todaydir + "]下"
 
     def destroy(self, widget, data=None):
         print "***程序关闭***"
@@ -319,13 +334,15 @@ class window:
 
         vTerminal = vte.Terminal()
         vTerminal.set_emulation("xterm")
-
+        
+        logtimename = time.strftime('%Y%m%d%H%M',time.localtime())
         self.serverInfo[server] = {
                 "serverName":server,
                 "vTerminal":vTerminal,
                 "checkButton":checkButton,
 	        "information":"",
-		"vtebox":vtebox
+		"vtebox":vtebox,
+                "logtime":logtimename
         }
 	
         redhatver = open("/etc/redhat-release","r").read().split(" ")[-2].split(".")[0]
@@ -354,9 +371,9 @@ class window:
         vTerminal.set_colors(fgcolor, bgcolor, palette)
 	#change color
         vTerminal.set_size_request(600,400)
-        vTerminal.set_scrollback_lines (100000)
-	logtimename = time.strftime('%Y%m%d%H%M',time.localtime())
-        vTerminal.connect ("contents-changed", self.save_log,server,logtimename)
+        vTerminal.set_scrollback_lines (-1)
+	#logtimename = time.strftime('%Y%m%d%H%M',time.localtime())
+        vTerminal.connect ("child-exited", self.save_log,server)
         vTerminal.connect ("child-exited", self.exit_terminal,server)#contents-changed
         vTerminal.set_scroll_on_output(False)
 	   
@@ -673,7 +690,7 @@ class window:
         menuBar = self.build_Menu()
 	blabel = self.build_blabel("输出确认---》例：基准对象名:[关键字]")
 	input_label = self.build_blabel("并行操作->>>")
-	versioninfo = self.build_blabel("目前版本0.9.3 alpha")
+	versioninfo = self.build_blabel("目前版本0.9.4 alpha")
         
         self.noteBook = self.build_Note(loginid,defcmd)
         self.messageView = self.build_MessageView()
@@ -700,6 +717,10 @@ class window:
         com_button.connect("clicked",self.com_result_bykey,com_entry)
         com_hbox.pack_start(com_button, False, False, 0)
         com_button.show()
+        outputlog_button = gtk.Button("及时输出信息")
+        outputlog_button.connect("clicked",self.save_log_now)
+        com_hbox.pack_start(outputlog_button, False, False, 0)
+        outputlog_button.show()
         main_vbox.pack_start(com_hbox, False, False, 0)
         com_hbox.show()	
 
@@ -722,7 +743,7 @@ class window:
         gtk.main()
         
 
-print "Verion 0.9.3 alpha"
+print "Verion 0.9.4 alpha"
 defcmd = raw_input("是否只用shell开始[Y/N]")
 
 if defcmd == 'N' or defcmd == 'NO' or defcmd == 'n' or defcmd == 'no':

@@ -192,7 +192,9 @@ class window:
            file_object = open(todaydir + "/" + server + "." + logtimename + ".log","w")
            file_object.write(content)
            file_object.close()             
-        print "***" + time.strftime('%Y-%m-%d %H:%M:%S',time.localtime()) + " 日志保存于[./" + todaydir + "]下"
+        #self.mterm.feed_child("echo ***" + time.strftime('%Y-%m-%d %H:%M:%S',time.localtime()) + " 日志保存于[./" + todaydir + "]下\n")
+        meg = "日志保存于[./" + todaydir + "]下"
+        self.sendmegtomterm(meg)
 
     def destroy(self, widget, data=None):
         print "***程序关闭***"
@@ -291,7 +293,8 @@ class window:
 	   #defcmd = 'Y'
            for server in servers:
                if server in self.servers:
-                   print server + " 重复了，无法开启多一个窗口，请别名，例如: " + svr + "_1"
+                   meg = server + " 重复了，无法开启多一个窗口，请别名，例如: " + svr + "_1"
+                   self.sendmegtomterm(meg)
                    continue
                else:
                    self.servers.append(server)
@@ -378,9 +381,54 @@ class window:
         vTerminal.set_scroll_on_output(False)
 	   
 	vtesw.add(vTerminal)
-	vtesw.show
+	vtesw.show()
         vtebox.pack_start(vtesw)
 	return vtebox
+
+    def megterm(self):
+        mtebox = gtk.VBox(False, 0)
+	mtebox.show()
+	mtesw = gtk.ScrolledWindow()
+        mtesw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        
+        self.mterm = vte.Terminal()
+	fgcolor = gtk.gdk.color_parse('#000000')
+        bgcolor = gtk.gdk.color_parse('#ffffff')
+        colors =['#2e3436','#cc0000','#4e9a06','#c4a000','\
+#3465a4','#75507b','#06989a','#d3d7cf','#555753','#ef2929','#8ae234','#fce94f','\
+#729fcf','#ad7fa8','#34e2e2','#eeeeec']
+        palette = []
+        for color in colors:
+           if color:
+              palette.append(gtk.gdk.color_parse(color))
+        self.mterm.set_colors(fgcolor, bgcolor, palette)        
+        self.mterm.set_scrollback_lines (-1)
+        
+        redhatver = open("/etc/redhat-release","r").read().split(" ")[-2].split(".")[0]
+
+        if int(redhatver) < 7:
+            self.mterm.fork_command()
+        else:
+            self.mterm.fork_command("/usr/bin/sh")
+
+        self.mterm.feed_child("tty\n")
+        
+        mtesw.add(self.mterm)
+        mtesw.show()
+        mtebox.pack_start(mtesw)
+   
+        return mtebox
+
+    def sendmegtomterm(self,meg=None):
+
+        v = self.mterm
+        x,y = v.get_cursor_position()
+        content = v.get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
+        ttynum = content.split("\n")[2]
+        pretime = "***" + time.strftime('%Y-%m-%d %H:%M:%S',time.localtime())
+        meg = pretime + " " + meg
+        os.system("echo -e \"" + meg + "\">" + ttynum)
+        
 
     def add_Server(self,widget,event):
         begin_dialog = gtk.Dialog()
@@ -504,7 +552,8 @@ class window:
 
            for server in self.serverInfo:
 	      if self.serverInfo[server]["information"] == "":
-	         print self.serverInfo[server]["serverName"] + " not found in " + filename
+	         meg = self.serverInfo[server]["serverName"] + " not found in " + filename
+                 self.sendmegtomterm(meg)
 	      else:
 	         self.serverInfo[server]["vTerminal"].feed_child(self.serverInfo[server]["information"])
 	except (IOError),x:
@@ -523,7 +572,8 @@ class window:
             base_server = base_entry.get_text().split(':')[0]
             cus_keyword = str(base_entry.get_text().split(':')[-1])
         else:
-            print "必须填入关键字,如：host1:keyword"
+            meg = "必须填入关键字,如：host1:keyword"
+            self.sendmegtomterm(meg)
             return 1
         v = self.serverInfo[base_server]["vTerminal"]
         x,y = v.get_cursor_position()
@@ -563,18 +613,27 @@ class window:
             result_list = []    
             result_list = sorted(result_dict.items(),key=lambda x:x[1],reverse=True)
             
-            print "***" + time.strftime('%Y-%m-%d %H:%M:%S',time.localtime()) + " 确认结果如下"
+            meg = "确认结果如下"
+            self.sendmegtomterm(meg)
 
             for onere in result_list:
                 if onere[-1] < 70.0:
                     if onere[-1] > 50.0:
-                        print onere[0],'is \033[1;33m',format(onere[-1],'0.4'),'%\033[0m'
+                        #print onere[0],'is \033[1;33m',format(onere[-1],'0.4'),'%\033[0m'
+                        meg = onere[0] + ' is \033[1;33m' + format(onere[-1],'0.4') + '%\033[0m'
+                        self.sendmegtomterm(meg)
                     else:
-                        print onere[0],'is \033[1;31m',format(onere[-1],'0.4'),'%\033[0m'
+                        #print onere[0],'is \033[1;31m',format(onere[-1],'0.4'),'%\033[0m'
+                        meg = onere[0] + ' is \033[1;31m' + format(onere[-1],'0.4') + '%\033[0m'
+                        self.sendmegtomterm(meg)
                 else:
-                    print onere[0],'is \033[1;32m',format(onere[-1],'0.4'),'%\033[0m'            
+                    #print onere[0],'is \033[1;32m',format(onere[-1],'0.4'),'%\033[0m'
+                    meg = onere[0] + ' is \033[1;32m' + format(onere[-1],'0.4') + '%\033[0m'
+                    self.sendmegtomterm(meg)            
         else:
-            print "关键字:[" + cus_keyword + "]在" + base_server +"中没有找到,无法进行比较"
+            #print "关键字:[" + cus_keyword + "]在" + base_server +"中没有找到,无法进行比较"
+            meg = "关键字:[" + cus_keyword + "]在" + base_server +"中没有找到,无法进行比较"
+            self.sendmegtomterm(meg)
                  
     def build_Menu(self):
         menu1 = gtk.Menu()
@@ -645,6 +704,7 @@ class window:
 
 
     def build_MessageView(self):
+        
 	box1 = gtk.VBox(False, 0)
 	box1.set_border_width(1)
 	box1.show()
@@ -654,7 +714,7 @@ class window:
         MessageView = gtk.TextView()
 
         b = gtk.TextBuffer()
-        b.set_text("临时笔记区")
+        b.set_text("欢迎使用该脚本，目前版本0.9.4beta")
 
         MessageView.set_buffer(b)
 	sw.add(MessageView)
@@ -663,7 +723,8 @@ class window:
 	
         box1.pack_start(sw)
 	
-	return box1
+	return box1     
+
 
     def build_InputEntry(self):
         inputEntry = gtk.Entry()
@@ -690,10 +751,10 @@ class window:
         menuBar = self.build_Menu()
 	blabel = self.build_blabel("输出确认---》例：基准对象名:[关键字]")
 	input_label = self.build_blabel("并行操作->>>")
-	versioninfo = self.build_blabel("目前版本0.9.4 alpha")
-        
+        meg_label = self.build_blabel("消息终端，下方终端用于输出信息和利用shell操作")
+	        
         self.noteBook = self.build_Note(loginid,defcmd)
-        self.messageView = self.build_MessageView()
+        #self.messageView = self.build_MessageView()
 
         self.window.set_default_size(800,600)
 
@@ -730,11 +791,22 @@ class window:
 	input_label.show()
 	input_hbox.pack_start(inputEntry, True, True, 0)
 	inputEntry.show()
-	input_hbox.pack_start(versioninfo, False, False, 0)
-	versioninfo.show()
+	#input_hbox.pack_start(versioninfo, False, False, 0)
+	#versioninfo.show()
 	main_vbox.pack_start(input_hbox, False, False, 0)
 	input_hbox.show()
-
+        
+        meg_hbox = gtk.HBox(False, 1)
+        meg_hbox.set_border_width(1)
+        meg_hbox.pack_start(meg_label, False, False, 0)
+        meg_label.show()
+        main_vbox.pack_start(meg_hbox, False, False, 0)
+        meg_hbox.show()
+        
+        mtermx = self.megterm()
+        main_vbox.pack_start(mtermx, True, True, 0)
+        mtermx.show()
+       
         self.window.show_all()
 
         self.window.connect("delete_event", self.delete_event)

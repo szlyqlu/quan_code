@@ -169,16 +169,30 @@ class window:
 	#self.save_log(server,logtimename)
 
     def save_log(self,event,server=None):
-        v = self.serverInfo[server]["vTerminal"]
-        x,y = v.get_cursor_position()
-        content = v.get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
-	todaydir = time.strftime('%Y%m%d',time.localtime())
-	if not os.path.exists(todaydir):
-	   os.makedirs(todaydir)
-        logtimename = self.serverInfo[server]["logtime"]
-        file_object = open(todaydir + "/" + server + "." + logtimename + ".log","w")
-        file_object.write(content)
-        file_object.close()
+        if server != None:
+           v = self.serverInfo[server]["vTerminal"]
+           x,y = v.get_cursor_position()
+           content = v.get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
+	   todaydir = time.strftime('%Y%m%d',time.localtime())
+	   if not os.path.exists(todaydir):
+	      os.makedirs(todaydir)
+           logtimename = self.serverInfo[server]["logtime"]
+           file_object = open(todaydir + "/" + server + "." + logtimename + ".log","w")
+           file_object.write(content)
+           file_object.close()
+        else:
+           for server in self.serverInfo:
+              v = self.serverInfo[server]["vTerminal"]
+              x,y = v.get_cursor_position()
+              content = v.get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
+              todaydir = time.strftime('%Y%m%d',time.localtime())
+              if not os.path.exists(todaydir):
+                 os.makedirs(todaydir)
+              logtimename = self.serverInfo[server]["logtime"]
+              file_object = open(todaydir + "/" + server + "." + logtimename + ".log","w")
+              file_object.write(content)
+              file_object.close()
+
 
     def save_log_now(self,event):
         for server in self.servers:
@@ -198,11 +212,11 @@ class window:
 
     def destroy(self, widget, data=None):
         print "***程序关闭***"
-	#self.save_log()
+	self.save_log(None)
         gtk.main_quit()
 
     def delete_event(self, widget, event, data=None):
-        #self.save_log()
+        self.save_log(None)
         print "delete event occurred"
         return False
 
@@ -216,9 +230,12 @@ class window:
         self.serverInfo.pop(server)
 	self.servers.remove(server)
         #print self.serverInfo
-        #没有server了则直接关闭窗口
-        #if self.noteBook.get_n_pages() == 0:
-        #    self.window.destroy()
+        #没有server了则通知消息窗口
+        if self.noteBook.get_n_pages() == 0:
+           meg = "剩余窗口数为0，如果要退出，请选择左上角退出或是右上角X"
+           self.sendmegtomterm(meg)
+           meg = "或是左上角主菜单->添加窗口"
+           self.sendmegtomterm(meg)
 
     def send_key_event(self,widget,event):
         for server in self.serverInfo:
@@ -293,7 +310,7 @@ class window:
 	   #defcmd = 'Y'
            for server in servers:
                if server in self.servers:
-                   meg = server + " 重复了，无法开启多一个窗口，请别名，例如: " + svr + "_1"
+                   meg = server + " 重复了，无法开启多一个窗口，请别名，例如: " + server + "_1"
                    self.sendmegtomterm(meg)
                    continue
                else:
@@ -348,9 +365,8 @@ class window:
                 "logtime":logtimename
         }
 	
-        redhatver = open("/etc/redhat-release","r").read().split(" ")[-2].split(".")[0]
 
-        if int(redhatver) < 7:
+        if ' 7.' not in open("/etc/redhat-release","r").read():
             vTerminal.fork_command()
         else:
             vTerminal.fork_command("/usr/bin/sh")
@@ -377,7 +393,7 @@ class window:
         vTerminal.set_scrollback_lines (-1)
 	#logtimename = time.strftime('%Y%m%d%H%M',time.localtime())
         vTerminal.connect ("child-exited", self.save_log,server)
-        vTerminal.connect ("child-exited", self.exit_terminal,server)#contents-changed
+        vTerminal.connect ("child-exited", self.exit_terminal,server)
         vTerminal.set_scroll_on_output(False)
 	   
 	vtesw.add(vTerminal)
@@ -404,9 +420,8 @@ class window:
         self.mterm.set_colors(fgcolor, bgcolor, palette)        
         self.mterm.set_scrollback_lines (-1)
         
-        redhatver = open("/etc/redhat-release","r").read().split(" ")[-2].split(".")[0]
 
-        if int(redhatver) < 7:
+        if ' 7.' not in open("/etc/redhat-release","r").read():
             self.mterm.fork_command()
         else:
             self.mterm.fork_command("/usr/bin/sh")
@@ -424,11 +439,16 @@ class window:
         v = self.mterm
         x,y = v.get_cursor_position()
         content = v.get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
-        ttynum = content.split("\n")[2]
+        for line in content.split("\n"):
+           if line[0:4] == "/dev":
+              ttynum = line
+              break
+        #print ttynum
         pretime = "***" + time.strftime('%Y-%m-%d %H:%M:%S',time.localtime())
         meg = pretime + " " + meg
         os.system("echo -e \"" + meg + "\">" + ttynum)
         
+
 
     def add_Server(self,widget,event):
         begin_dialog = gtk.Dialog()
@@ -568,11 +588,24 @@ class window:
 
         base_server = base_entry.get_text()
         result_dict = {}
+        
         if ':' in base_server:
             base_server = base_entry.get_text().split(':')[0]
             cus_keyword = str(base_entry.get_text().split(':')[-1])
         else:
             meg = "必须填入关键字,如：host1:keyword"
+            self.sendmegtomterm(meg)
+            return 1
+        if len(self.serverInfo) > 200:
+            meg = "警告!!!对象数超过200，程序无法承受，请用shell解决"
+            self.sendmegtomterm(meg)
+            return 1  
+        elif len(self.serverInfo) == 1:
+            meg = "目前窗口数只有1，没有比较的需要"
+            self.sendmegtomterm(meg)
+            return 1
+        if base_server not in self.serverInfo:
+            meg = base_server + "不在当前控制的窗口里，确认后再来"
             self.sendmegtomterm(meg)
             return 1
         v = self.serverInfo[base_server]["vTerminal"]
@@ -714,7 +747,7 @@ class window:
         MessageView = gtk.TextView()
 
         b = gtk.TextBuffer()
-        b.set_text("欢迎使用该脚本，目前版本0.9.4beta")
+        b.set_text("欢迎使用该脚本，目前版本0.9.5 alpha")
 
         MessageView.set_buffer(b)
 	sw.add(MessageView)
@@ -771,7 +804,7 @@ class window:
         com_hbox.pack_start(blabel, False, False, 0)
         blabel.show()
         com_entry = gtk.Entry()
-        com_entry.set_text("基准对象名[:关键字]")
+        #com_entry.set_text("基准对象名[:关键字]")
         com_hbox.pack_start(com_entry, False, False, 0)
         com_entry.show()
         com_button = gtk.Button("开始输出确认")
@@ -815,7 +848,7 @@ class window:
         gtk.main()
         
 
-print "Verion 0.9.4 alpha"
+print "Verion 0.9.5 alpha"
 defcmd = raw_input("是否只用shell开始[Y/N]")
 
 if defcmd == 'N' or defcmd == 'NO' or defcmd == 'n' or defcmd == 'no':

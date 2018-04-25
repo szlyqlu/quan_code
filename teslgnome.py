@@ -1,5 +1,6 @@
 #!/usr/bin/python
 #coding=utf-8
+#关于python gtk2方面的信息可以参考http://www.pygtk.org/pygtk2tutorial/index.html
 import gtk
 import vte
 import time
@@ -137,7 +138,8 @@ class window:
             server_num = server_num + 1
 
         book.save("result1.xls")
-	show_message("表格创建完成，在当前目录下的result1.xls", "完成")
+	meg = "表格创建完成，在当前目录下的result1.xls"
+        self.sendmegtomterm(meg)
 
     def file_choose_dialog(self):
     	filename=None
@@ -195,38 +197,46 @@ class window:
 
 
     def save_log_now(self,event):
+        todaydir = time.strftime('%Y%m%d',time.localtime())
+        if not os.path.exists(todaydir):
+	   os.makedirs(todaydir)
         for server in self.servers:
-           v = self.serverInfo[server]["vTerminal"]
-           x,y = v.get_cursor_position()
-           content = v.get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
-	   todaydir = time.strftime('%Y%m%d',time.localtime())
-	   if not os.path.exists(todaydir):
-	      os.makedirs(todaydir)
-           logtimename = self.serverInfo[server]["logtime"]
-           file_object = open(todaydir + "/" + server + "." + logtimename + ".log","w")
-           file_object.write(content)
-           file_object.close()             
-        #self.mterm.feed_child("echo ***" + time.strftime('%Y-%m-%d %H:%M:%S',time.localtime()) + " 日志保存于[./" + todaydir + "]下\n")
-        meg = "日志保存于[./" + todaydir + "]下"
+           if self.serverInfo[server]["serverName"] != "welcome":
+              v = self.serverInfo[server]["vTerminal"]
+              x,y = v.get_cursor_position()
+              content = v.get_text_range(0, 0, y,x,lambda widget, col, row, junk: True)
+	      
+              logtimename = self.serverInfo[server]["logtime"]
+              file_object = open(todaydir + "/" + server + "." + logtimename + ".log","w")
+              file_object.write(content)
+              file_object.close()             
+
+        meg = "日志保存于[./" + todaydir + "]下，注意本功能不保留默认窗口welcome的信息"
         self.sendmegtomterm(meg)
 
     def destroy(self, widget, data=None):
-        print "***程序关闭***"
+        #print "***程序关闭***"
 	self.save_log(None)
         gtk.main_quit()
 
     def delete_event(self, widget, event, data=None):
         self.save_log(None)
-        print "delete event occurred"
+        #print "delete event occurred"
         return False
 
     def exit_terminal(self,event,server):
+
+        
         #保存该窗口日志并移除该窗口页面与对应的服务器列表项
-        #self.save_log(server)
+        self.save_log(server)
 
         page_num = self.noteBook.page_num(self.serverInfo[server]["vtebox"])
         self.noteBook.remove_page(page_num)
 
+        todaydir = time.strftime('%Y%m%d',time.localtime())
+        meg = "[" + server + "] 已关闭，日志保存在[" + todaydir + "]目录下"
+
+        self.sendmegtomterm(meg)
         self.serverInfo.pop(server)
 	self.servers.remove(server)
         #print self.serverInfo
@@ -250,6 +260,8 @@ class window:
             widget.set_text("")
         #排除特殊按键的窗口切换，上方向键和tab键
         elif event.keyval == gtk.keysyms.Up:
+            return True
+        elif event.keyval == gtk.keysyms.Down:
             return True
         elif event.keyval == gtk.keysyms.Tab:
             widget.set_text("")
@@ -307,13 +319,14 @@ class window:
            #print server_string
            #print dialog.get_content_area().get_children()[2].get_active()
            servers = server_string.split(" ")
+           
 	   #defcmd = 'Y'
            for server in servers:
                if server in self.servers:
                    meg = server + " 重复了，无法开启多一个窗口，请别名，例如: " + server + "_1"
                    self.sendmegtomterm(meg)
                    continue
-               else:
+               elif server != "":                  
                    self.servers.append(server)
 
 		   labbox = gtk.HBox(False, 0)
@@ -327,6 +340,10 @@ class window:
 	           vlabel = gtk.Label(server)
 	           vlabel.show()
 	           labbox.pack_start(vlabel)
+                   exitbutton = gtk.Button("X")
+                   exitbutton.connect("clicked",self.closenote,server)
+                   exitbutton.show()
+                   labbox.pack_start(exitbutton)
 		   if dialog.get_content_area().get_children()[2].get_active():
                        if dialog.get_content_area().get_children()[3].get_text() == None:
                            defcmd = 'Y'
@@ -392,7 +409,6 @@ class window:
         vTerminal.set_size_request(600,400)
         vTerminal.set_scrollback_lines (-1)
 	#logtimename = time.strftime('%Y%m%d%H%M',time.localtime())
-        vTerminal.connect ("child-exited", self.save_log,server)
         vTerminal.connect ("child-exited", self.exit_terminal,server)
         vTerminal.set_scroll_on_output(False)
 	   
@@ -462,7 +478,7 @@ class window:
         begin_dialog.set_title("添加窗口")
         #begin_dialog.add_action_widget(begin_dialog_entry, 0)
 
-        begin_dialog_label = gtk.Label("请输入要添加的窗口名")
+        begin_dialog_label = gtk.Label("请输入要添加的窗口名,多的时候空格隔开")
         begin_dialog.vbox.pack_start(begin_dialog_label, False, False, 0)
         begin_dialog_label.show()
 
@@ -584,6 +600,25 @@ class window:
     	    if self.serverInfo[server]['checkButton'].get_active():
                 self.serverInfo[server]["vTerminal"].feed_child(self.serverInfo[server]["serverName"])
 
+    def closenote(self,widget,server=None):
+        def get_response(dialog,response_id,server):
+            if response_id == 1:
+                self.exit_terminal("None",server)
+                dialog.destroy()
+            else:
+                dialog.destroy()
+        close_dialog = gtk.Dialog()
+        confirm_meg = gtk.Label("你确认要关闭 "+ server +" ?")
+        close_dialog.vbox.pack_start(confirm_meg, False, False, 0)
+        close_dialog.set_title("确认一遍")
+        close_dialog.add_button("Yes",1)
+        close_dialog.add_button("No",2)
+        close_dialog.connect("response",get_response,server)
+        confirm_meg.show()
+        close_dialog.run()
+            
+        
+
     def com_result_bykey(self,widget,base_entry=None):
 
         base_server = base_entry.get_text()
@@ -622,6 +657,17 @@ class window:
 
         if keylinenum != -9999:
             base_content = base_list[-keylinenum:]
+            
+            if len(base_content) > 1000 and len(self.serverInfo) > 100:
+                megs = """警告!!!
+你的请求超过了程序可以承载的能力。
+边界值为100个窗口1000行请求。
+该请求驳回，请使用shell处理。"""
+                for meg in megs.split("\n"):
+                    self.sendmegtomterm(meg)
+                
+                return 1
+            
             #print base_content
             for server in self.servers:
                 if self.serverInfo[server]['checkButton'].get_active() and self.serverInfo[server]["serverName"] != base_server:
@@ -730,6 +776,11 @@ class window:
 	   vlabel = gtk.Label(server)
 	   vlabel.show()
 	   labbox.pack_start(vlabel)
+
+           exitbutton = gtk.Button("X")
+           exitbutton.connect("clicked",self.closenote,server)
+           exitbutton.show()
+           labbox.pack_start(exitbutton)
 
 	   nvtebox = self.cvtebox(loginid,defcmd,server,checkButton)
 	   noteBook.append_page(nvtebox,labbox)
@@ -847,39 +898,15 @@ class window:
 
         gtk.main()
         
-
-print "Verion 0.9.5 alpha"
-defcmd = raw_input("是否只用shell开始[Y/N]")
-
-if defcmd == 'N' or defcmd == 'NO' or defcmd == 'n' or defcmd == 'no':
-    while 1:
-        loginid = raw_input("请输入你的登录ID: ")
-        if len(loginid) == 0:
-           print "***请不要输入空值，再次输入***"
-        else:
-           break
+loginid = None
+defcmd = "Y"
+if len(sys.argv) > 1:
+    init_terminal = sys.argv[1:]
 else:
-    loginid = ''
+    init_terminal = ["welcome",]
 
-print "***如果输入窗口数多的时候，需按两次回车执行***"
-
-while 1:
-    serverlist = raw_input("请输入窗口列表： ")
-    if len(serverlist) == 0:
-        print "***请不要输入空值，再次输入***"
-    else:
-        break
-
-serverlist = serverlist.split(" ")
-new_svrs = []
-for svr in serverlist:
-   if svr not in new_svrs:
-      if svr != '':
-         new_svrs.append(svr)
-   else:
-      print svr + " 重复了，无法开启多一个窗口，请别名，例如: " + svr + "_1"
 try:
-   window = window(new_svrs)
+   window = window(init_terminal)
 except KeyboardInterrupt, e:
    print "!!!警告，你输入了一个ctrl+c指令，为防止错误输入，请看下面"
    endans = raw_input("是否要结束程序?(输入任何按键回车或是无视)")
